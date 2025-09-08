@@ -1,0 +1,23 @@
+server:
+  port: 9090
+
+spring:
+  application:
+    name: amadeus-mcp-server
+  ai:
+    mcp:
+      server:
+        name: amadeus-mcp-server
+        version: 1.0.0
+        instructions: "This server provides flights, hotels, cities, and airport information tools and resources"
+  main:
+    banner-mode: off
+    #web-application-type: none
+
+amadeus:
+  client:
+    id: ErjGBow9QGrGUe5RUzyWY169YPeVqT1O
+    secret: VpjGLYyRnEnAdHXV
+
+
+
