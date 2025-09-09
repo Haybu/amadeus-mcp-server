@@ -16,8 +16,8 @@ spring:
 
 amadeus:
   client:
-    id: ErjGBow9QGrGUe5RUzyWY169YPeVqT1O
-    secret: VpjGLYyRnEnAdHXV
+    id: $AMADEUS_CLIENT_ID
+    secret: $AMADEUS_CLIENT_SECRET
 
 
 
