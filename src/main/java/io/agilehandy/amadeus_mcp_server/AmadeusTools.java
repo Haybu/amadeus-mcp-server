@@ -4,18 +4,20 @@ import com.amadeus.Amadeus;
 import com.amadeus.Params;
 import com.amadeus.exceptions.ResponseException;
 import com.amadeus.referencedata.Locations;
-import com.amadeus.resources.*;
+import com.amadeus.resources.Airline;
+import com.amadeus.resources.FlightOfferSearch;
+import com.amadeus.resources.Hotel;
+import com.amadeus.resources.Location;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.context.annotation.Description;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class AmadeusTools {
@@ -27,13 +29,24 @@ public class AmadeusTools {
     }
 
     @Tool(
-            name="Flights Search",
-            description="To search flights from origin to destination locations on departure and return dates for number of adults"
+            name="search_flights",
+            description="to search flights from origin to destination locations on departure and return dates for number of adults"
     )
-    public String flights(String originLocationCode, String destinationLocationCode,
-                          @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate departureDate,
-                          @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate returnDate,
-                          Integer numberOfAdults, Integer maxNumberOfTravelers) throws ResponseException, JsonProcessingException {
+    public List<String> flights(
+            @ToolParam(description = "iataCode of the travel departure airport. If a city is given find the code of the main or nearby airport in that city")
+            String originLocationCode,
+            @ToolParam(description = "iataCode of the travel arrival airport. If a city is given find code of the main or nearby airport in that city")
+            String destinationLocationCode,
+            @ToolParam(description = "travel departure date in the format yyyy-MM-dd")
+            @DateTimeFormat(pattern = "yyyy-MM-dd")
+            LocalDate departureDate,
+            @ToolParam(description = "travel return date in the format yyyy-MM-dd")
+            @DateTimeFormat(pattern = "yyyy-MM-dd")
+            LocalDate returnDate,
+            @ToolParam(description = "number of traveling adults")
+            Integer numberOfAdults,
+            @ToolParam(description = "number of all traveling persons")
+            Integer maxNumberOfTravelers) throws ResponseException, JsonProcessingException {
         Map<String, LocalDate> dates = this.checkAndCorrectDates(Map.of("departure date", departureDate, "return date", returnDate));
         Integer adults = numberOfAdults == null? 1:numberOfAdults;
         Integer max = maxNumberOfTravelers == null? 1:maxNumberOfTravelers;
@@ -44,55 +57,62 @@ public class AmadeusTools {
                 .and("adults", adults)
                 .and("max", max);
         FlightOfferSearch[] flightOfferSearches = amadeus.shopping.flightOffersSearch.get(params);
-        return Arrays.stream(flightOfferSearches).map(FlightOfferSearch::toString)
-                .collect(Collectors.joining("\n"));
+        return Arrays.stream(flightOfferSearches)
+                .map(flight -> flight.getResponse().getBody()).toList();
     }
 
     @Tool(
-            name="Hotels Search",
-            description="To search hotels based on a city code"
+            name="search_hotels",
+            description="to search hotels based on a location iataCode"
     )
-    public String hotels(String cityCode) throws ResponseException, JsonProcessingException {
+    public List<String> hotels(
+            @ToolParam(description = """
+                city iataCode. If the provided code is an airport iataCode then find the iatacode of the city 
+                where the airport is located.
+            """)
+            String cityCode) throws ResponseException, JsonProcessingException {
         Params params = Params.with("cityCode", cityCode);
         Hotel[] hotels = amadeus.referenceData.locations.hotels.byCity.get(params);
-        return Arrays.stream(hotels).map(Hotel::toString)
-                .collect(Collectors.joining("\n"));
+        return Arrays.stream(hotels)
+                .map(hotel -> hotel.getResponse().getBody()).toList();
     }
 
-    @Tool(
-            name="List Cities",
-            description="To list all cities based on a keyword"
-    )
-    public String cities(String keyword) throws ResponseException {
+    //@Tool(
+            //name="list_cities",
+            //description="to list information about all cities based on a keyword"
+    //)
+    public Location[] cities( @ToolParam(description = "keyword to use for cities search") String keyword) throws ResponseException {
         Location[] locations = amadeus.referenceData.locations.get(Params
                 .with("keyword", keyword)
                 .and("subType", Locations.CITY));
-        return Arrays.stream(locations).map(Location::toString)
-                .collect(Collectors.joining("\n"));
-
+        //return Arrays.stream(locations).map(Location::toString)
+                //.collect(Collectors.joining("\n"));
+        return locations;
     }
 
-    @Tool(
-            name="List Airports",
-            description="To list all airports based on a keyword"
-    )
-    public String airports(String keyword) throws ResponseException {
+    //@Tool(
+            //name="list_airports",
+            //description="to list information about all airports based on a keyword"
+    //)
+    public Location[] airports(@ToolParam(description = "keyword to use for airports search") String keyword) throws ResponseException {
         Location[] locations = amadeus.referenceData.locations.get(Params
                 .with("keyword", keyword)
                 .and("subType", Locations.AIRPORT));
-        return Arrays.stream(locations).map(Location::toString)
-                .collect(Collectors.joining("\n"));
+        //return Arrays.stream(locations).map(Location::toString)
+                //.collect(Collectors.joining("\n"));
+        return locations;
     }
 
-    @Tool(
-            name="Airline Lookup",
-            description="To lookup airline by code"
-    )
-    public String airlineCodeLookup(String airlineCode) throws ResponseException {
+    //@Tool(
+            //name="lookup_airlines",
+            //description="to lookup airline by iataCode"
+    //)
+    public Airline[] airlineCodeLookup(@ToolParam(description = "airline code") String airlineCode) throws ResponseException {
         Airline[] airlineCodes = amadeus.referenceData.airlines.get(Params
                 .with("airlineCodes", airlineCode));
-        return Arrays.stream(airlineCodes).map(Airline::toString)
-                .collect(Collectors.joining("\n"));
+        //return Arrays.stream(airlineCodes).map(Airline::toString)
+            //.collect(Collectors.joining("\n"));
+        return airlineCodes;
     }
 
     private Map<String, LocalDate> checkAndCorrectDates(Map<String, LocalDate> dates) {
